@@ -1,0 +1,56 @@
+{
+  "name": "migrate-github-project",
+  "version": "0.0.0-development",
+  "description": "Migrate organization-owned GitHub projects (https://docs.github.com/en/issues/planning-and-tracking-with-projects) between GitHub products and organizations",
+  "homepage": "https://github.com/timrogers/formanator",
+  "bin": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "npx tsc -p tsconfig.json",
+    "prepublish": "npm run build",
+    "prepack": "node script/generate-version-file.cjs > dist/version.js",
+    "lint": "eslint . --ext .ts",
+    "lint-and-fix": "eslint . --ext .ts --fix",
+    "semantic-release": "semantic-release",
+    "dev": "npx ts-node --esm src/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "author": "Tim Rogers <me@timrogers.co.uk>",
+  "license": "MIT",
+  "dependencies": {
+    "@fast-csv/parse": "^4.3.6",
+    "@octokit/graphql": "^7.0.1",
+    "@octokit/plugin-paginate-graphql": "^4.0.0",
+    "boxen": "^7.1.1",
+    "chalk": "^5.3.0",
+    "commander": "^11.0.0",
+    "dotenv": "^16.3.1",
+    "octokit": "^3.1.0",
+    "prompt-sync": "^4.2.0",
+    "winston": "^3.10.0"
+  },
+  "devDependencies": {
+    "@types/prompt-sync": "^4.2.0",
+    "@typescript-eslint/eslint-plugin": "^5.5.2",
+    "@typescript-eslint/parser": "^5.5.2",
+    "eslint": "^8.46.0",
+    "eslint-config-prettier": "^8.9.0",
+    "eslint-config-standard-with-typescript": "^37.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.0",
+    "semantic-release": "^21.0.7",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timrogers/migrate-github-project.git"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ]
+  }
+}
