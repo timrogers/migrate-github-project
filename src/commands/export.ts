@@ -61,12 +61,14 @@ const getProjectItems = async ({
               content {
                 __typename
                 ... on Issue {
+                  title
                   number
                   repository {
                     nameWithOwner
                   }
                 }
                 ... on PullRequest {
+                  title
                   number
                   repository {
                     nameWithOwner
