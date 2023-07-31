@@ -80,7 +80,7 @@ corp/website,monalisa-emu/website
 
 If you don't want to map a repository - for example because it hasn't been migrated - just delete the line from the CSV or leave the `target_repository` blank. If a repository hasn't been mapped, project items related to that repository will be skipped during the import.
 
-### Step 5. Import your project into your migratin target
+### Step 5. Import your project into your migration target
 
 You've exported your data and filled out the repository mappings template. You can now import your project into your migration target.
 
