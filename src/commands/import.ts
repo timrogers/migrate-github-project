@@ -428,26 +428,6 @@ const promptUntilStatusFieldsCorrelate = async (
   ) as { id: string; options: Array<{ id: string; name: string }> };
   const expectedOptions = sourceProjectStatusField.options.map((option) => option.name);
 
-  if (isFirstRun) {
-    console.log(
-      boxen(
-        `Your new project has been created.\n\nYou now need to manually update the "Status" field's options to match your source. Here's what you need to do:\n\n1. Go to <${targetProjectUrl}/settings/fields/Status>.\n2. Make sure you have exactly the following options configured: ${expectedOptions.join(
-          ', ',
-        )}\n\nOnce you've done that, hit Enter and we'll check that everything looks good.`,
-        { padding: 1, margin: 1, borderStyle: 'double' },
-      ),
-    );
-  } else {
-    console.log(
-      boxen(
-        "Your \"Status\" field's options don't look quite right. Please double check, and then when you're ready, hit Enter.",
-        { padding: 1, margin: 1, borderStyle: 'double' },
-      ),
-    );
-  }
-
-  prompt({ sigint: true })('Press Enter to continue...');
-
   const targetProjectStatusField = await getProjectStatusField({
     octokit,
     projectId: targetProjectId,
@@ -464,6 +444,26 @@ const promptUntilStatusFieldsCorrelate = async (
       mappings,
     };
   } catch (e) {
+    if (isFirstRun) {
+      console.log(
+        boxen(
+          `Your new project has been created.\n\nYou now need to manually update the "Status" field's options to match your source. Here's what you need to do:\n\n1. Go to <${targetProjectUrl}/settings/fields/Status>.\n2. Make sure you have exactly the following options configured: ${expectedOptions.join(
+            ', ',
+          )}\n\nOnce you've done that, hit Enter and we'll check that everything looks good.`,
+          { padding: 1, margin: 1, borderStyle: 'double' },
+        ),
+      );
+    } else {
+      console.log(
+        boxen(
+          "Your \"Status\" field's options don't look quite right. Please double check, and then when you're ready, hit Enter.",
+          { padding: 1, margin: 1, borderStyle: 'double' },
+        ),
+      );
+    }
+
+    prompt({ sigint: true })('Press Enter to continue...');
+
     return await promptUntilStatusFieldsCorrelate(
       { octokit, sourceProject, targetProjectId, targetProjectUrl },
       false,
