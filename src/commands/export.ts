@@ -75,6 +75,14 @@ const getProjectItems = async ({
                     nameWithOwner
                   }
                 }
+                ... on DraftIssue {
+                  title
+                  body
+                  createdAt
+                  creator {
+                    login
+                  }
+                }
               }
               fieldValues(first: 100) {
                 nodes {

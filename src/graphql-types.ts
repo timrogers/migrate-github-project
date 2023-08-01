@@ -131,6 +131,11 @@ export interface ProjectItem {
     repository: {
       nameWithOwner: string;
     };
+    body?: string;
+    createdAt?: string;
+    creator?: {
+      login: string;
+    };
   };
   fieldValues: {
     nodes: Array<{

@@ -553,11 +553,55 @@ const createProjectItemReferencingIssueOrPullRequest = async ({
     contentId,
   });
 
-  logger.info(
-    `Created project item ${createdProjectItemId} based on source project item ${sourceProjectItem.id}`,
-  );
-
   return createdProjectItemId;
+};
+
+const addDraftIssueToProject = async ({
+  title,
+  body,
+  octokit,
+  targetProjectId,
+}: {
+  title: string;
+  body: string;
+  octokit: Octokit;
+  targetProjectId: string;
+}): Promise<string | undefined> => {
+  const response = (await octokit.graphql(
+    `
+    mutation addDraftIssueToProject($title: String!, $body: String!, $targetProjectId: ID!) {
+      addProjectV2DraftIssue(input: { title: $title, body: $body, projectId: $targetProjectId }) {
+        projectItem {
+          id
+        }
+      }
+    }
+  `,
+    { title, body, targetProjectId },
+  )) as { addProjectV2DraftIssue: { projectItem: { id: string } } };
+
+  return response.addProjectV2DraftIssue.projectItem.id;
+};
+
+const createProjectItemReferencingDraftIssue = async ({
+  octokit,
+  logger,
+  sourceProjectItem,
+  targetProjectId,
+}: {
+  octokit: Octokit;
+  logger: winston.Logger;
+  sourceProjectItem: ProjectItem;
+  targetProjectId: string;
+}): Promise<string | undefined> => {
+  const { title } = sourceProjectItem.content;
+  const originalBody = sourceProjectItem.content.body as string;
+  const creatorLogin = sourceProjectItem.content?.creator?.login as string;
+  const createdAt = sourceProjectItem.content?.createdAt as string;
+
+  const body = `**Created by \`@${creatorLogin}\` on ${createdAt}**\n\n${originalBody}`;
+
+  return await addDraftIssueToProject({ title, body, octokit, targetProjectId });
 };
 
 const createProjectItem = async (opts: {
@@ -573,7 +617,7 @@ const createProjectItem = async (opts: {
     case 'PullRequest':
       return await createProjectItemReferencingIssueOrPullRequest(opts);
     case 'DraftIssue':
-      return 'foo';
+      return await createProjectItemReferencingDraftIssue(opts);
     default:
       throw new Error('Unknown content type');
   }
