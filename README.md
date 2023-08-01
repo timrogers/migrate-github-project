@@ -8,15 +8,18 @@ To use `migrate-github-project`, you must be running a [supported release of Nod
 
 ## Limitations
 
-`migrate-github-project` can only migrate to and from organization-owned projects. It is not compatible with user-owned projects.
-
 The following data is not migrated and will be skipped:
 
-* Draft issues (project items not linked to an issue or pull request)
 * Views
 * The order of project items displayed in your views
 * Workflows
 * Iteration custom fields
+* Draft issues' assignees
+
+There are a few other limitations you should be aware of:
+
+* `migrate-github-project` can only migrate to and from organization-owned projects. It is not compatible with user-owned projects.
+* Migrated draft issues will show as being created by the person who ran the migration at the time they ran the migration. A note will be prepended to the body with original author login and timestamp.
 
 ## Instructions
 
