@@ -15,6 +15,7 @@ import {
   type ProjectSingleSelectFieldOptionColor,
 } from '../graphql-types.js';
 import { GraphqlResponseError } from '@octokit/graphql';
+import { getReferencedRepositories } from '../project-items.js';
 
 const command = new commander.Command();
 
@@ -552,16 +553,6 @@ command
         void logRateLimitInformation(logger, octokit);
       }, 30_000);
 
-      logger.info(`Reading repository mappings from \`${repositoryMappingsPath}\`...`);
-      const repositoryMappings = await readRepositoryMappings(repositoryMappingsPath);
-      logger.info(`Loaded ${repositoryMappings.size} repository mapping(s)`);
-
-      if (!repositoryMappings.size) {
-        throw new Error(
-          `You must update your repositories mapping file \`${repositoryMappingsPath}\` with at least one repository mapping. Please update your mappings, and try again..`,
-        );
-      }
-
       logger.info(`Reading project data from \`${inputPath}\`...`);
       const { project: sourceProject, projectItems: sourceProjectItems } = JSON.parse(
         readFileSync(inputPath, 'utf8'),
@@ -569,6 +560,17 @@ command
       logger.info(
         `Loaded project data, including ${sourceProjectItems.length} project item(s)`,
       );
+
+      logger.info(`Reading repository mappings from \`${repositoryMappingsPath}\`...`);
+      const repositoryMappings = await readRepositoryMappings(repositoryMappingsPath);
+      logger.info(`Loaded ${repositoryMappings.size} repository mapping(s)`);
+      const referencedRepositories = getReferencedRepositories(sourceProjectItems);
+
+      if (referencedRepositories.length && !repositoryMappings.size) {
+        throw new Error(
+          `You must update your repositories mapping file \`${repositoryMappingsPath}\` with at least one repository mapping. Please update your mappings, and try again..`,
+        );
+      }
 
       logger.info(`Looking up ID for target organization ${projectOwner}...`);
       const ownerId = await getOrganizationGlobalId({ octokit, name: projectOwner });
