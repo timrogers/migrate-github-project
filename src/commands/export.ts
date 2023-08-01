@@ -7,6 +7,7 @@ import VERSION from '../version.js';
 import { createLogger } from '../logger.js';
 import { createOctokit } from '../octokit.js';
 import { type Project, type ProjectItem } from '../graphql-types.js';
+import { getReferencedRepositories } from '../project-items.js';
 
 const command = new commander.Command();
 
@@ -371,18 +372,7 @@ command
       );
       logger.info(`Successfully wrote project data to ${projectOutputPath}`);
 
-      const projectItemsReferencingRepository = projectItems.filter(
-        (projectItem) =>
-          projectItem.content.__typename === 'Issue' ||
-          projectItem.content.__typename === 'PullRequest',
-      );
-      const referencedRepositories = Array.from(
-        new Set(
-          projectItemsReferencingRepository.map(
-            (projectItem) => projectItem.content.repository.nameWithOwner,
-          ),
-        ),
-      );
+      const referencedRepositories = getReferencedRepositories(projectItems);
       const repositoriesTemplateCsvOutput =
         'source_repository,target_repository\n' +
         Array.from(referencedRepositories)
