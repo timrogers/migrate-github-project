@@ -16,6 +16,7 @@ import {
 } from '../graphql-types.js';
 import { GraphqlResponseError } from '@octokit/graphql';
 import { getReferencedRepositories } from '../project-items.js';
+import type winston from 'winston';
 
 const command = new commander.Command();
 
@@ -235,7 +236,7 @@ const archiveProjectItem = async ({
   );
 };
 
-const createProjectItem = async ({
+const addItemToProject = async ({
   octokit,
   projectId,
   contentId,
@@ -496,6 +497,88 @@ const isProjectItemCustomFieldValue = (field: {
   return name !== 'Title';
 };
 
+const createProjectItemReferencingIssueOrPullRequest = async ({
+  sourceProjectItem,
+  octokit,
+  repositoryMappings,
+  logger,
+  targetProjectId,
+}: {
+  sourceProjectItem: ProjectItem;
+  octokit: Octokit;
+  repositoryMappings: Map<string, string>;
+  logger: winston.Logger;
+  targetProjectId: string;
+}): Promise<string | undefined> => {
+  const sourceNameWithOwner = sourceProjectItem.content.repository.nameWithOwner;
+
+  const destinationNameWithOwner = repositoryMappings.get(sourceNameWithOwner);
+
+  if (!destinationNameWithOwner) {
+    logger.warn(
+      `Skipping project item ${sourceProjectItem.id} because there is no repository mapping for ${sourceNameWithOwner}`,
+    );
+    return;
+  }
+
+  const [destinationOwner, destinationName] = destinationNameWithOwner.split('/');
+
+  const { number } = sourceProjectItem.content;
+
+  const issueOrPullRequest = await getIssueOrPullRequestByRepositoryAndNumber({
+    octokit,
+    owner: destinationOwner,
+    name: destinationName,
+    number,
+  });
+
+  if (!issueOrPullRequest) {
+    logger.warn(
+      `Skipping project item ${sourceProjectItem.id} because issue/pull request ${destinationNameWithOwner}#${number} does not exist`,
+    );
+    return;
+  }
+
+  const { id: contentId, title } = issueOrPullRequest;
+
+  if (sourceProjectItem.content.title !== title) {
+    logger.warn(
+      `The title of issue/pull request ${destinationNameWithOwner}#${number}, referenced in project item ${sourceProjectItem.id}, does not match ${sourceNameWithOwner}#${number}. You may have mapped the incorrect repository, or there may be an issue with your migration.`,
+    );
+  }
+
+  const createdProjectItemId = await addItemToProject({
+    octokit,
+    projectId: targetProjectId,
+    contentId,
+  });
+
+  logger.info(
+    `Created project item ${createdProjectItemId} based on source project item ${sourceProjectItem.id}`,
+  );
+
+  return createdProjectItemId;
+};
+
+const createProjectItem = async (opts: {
+  sourceProjectItem: ProjectItem;
+  octokit: Octokit;
+  repositoryMappings: Map<string, string>;
+  logger: winston.Logger;
+  targetProjectId: string;
+}): Promise<string | undefined> => {
+  switch (opts.sourceProjectItem.content.__typename) {
+    case 'Issue':
+      return await createProjectItemReferencingIssueOrPullRequest(opts);
+    case 'PullRequest':
+      return await createProjectItemReferencingIssueOrPullRequest(opts);
+    case 'DraftIssue':
+      return 'foo';
+    default:
+      throw new Error('Unknown content type');
+  }
+};
+
 command
   .name('import')
   .version(VERSION)
@@ -699,48 +782,17 @@ command
           }/${projectItemsCount} based on source project item ${sourceProjectItem.id}...`,
         );
 
-        const sourceNameWithOwner = sourceProjectItem.content.repository.nameWithOwner;
-
-        const destinationNameWithOwner = repositoryMappings.get(sourceNameWithOwner);
-
-        if (!destinationNameWithOwner) {
-          logger.warn(
-            `Skipping project item ${sourceProjectItem.id} because there is no repository mapping for ${sourceNameWithOwner}`,
-          );
-          continue;
-        }
-
-        const [destinationOwner, destinationName] = destinationNameWithOwner.split('/');
-
-        const { number } = sourceProjectItem.content;
-
-        const issueOrPullRequest = await getIssueOrPullRequestByRepositoryAndNumber({
-          octokit,
-          owner: destinationOwner,
-          name: destinationName,
-          number,
-        });
-
-        if (!issueOrPullRequest) {
-          logger.warn(
-            `Skipping project item ${sourceProjectItem.id} because issue/pull request ${destinationNameWithOwner}#${number} does not exist`,
-          );
-          continue;
-        }
-
-        const { id: contentId, title } = issueOrPullRequest;
-
-        if (sourceProjectItem.content.title !== title) {
-          logger.warn(
-            `The title of issue/pull request ${destinationNameWithOwner}#${number}, referenced in project item ${sourceProjectItem.id}, does not match ${sourceNameWithOwner}#${number}. You may have mapped the incorrect repository, or there may be an issue with your migration.`,
-          );
-        }
-
         const createdProjectItemId = await createProjectItem({
           octokit,
-          projectId: targetProjectId,
-          contentId,
+          sourceProjectItem,
+          targetProjectId,
+          repositoryMappings,
+          logger,
         });
+
+        if (!createdProjectItemId) {
+          continue;
+        }
 
         logger.info(
           `Created project item ${createdProjectItemId} based on source project item ${sourceProjectItem.id}`,
