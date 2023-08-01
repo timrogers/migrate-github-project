@@ -672,7 +672,7 @@ command
 
       logger.info(`Created ${customFieldsToCreate.length} custom field(s)`);
 
-      logger.info('Preparing to set up "Status" field...');
+      logger.info('Checking if "Status" field is configured correctly...');
 
       const { sourceProjectStatusFieldId, targetProjectStatusFieldId, mappings } =
         await promptUntilStatusFieldsCorrelate({
