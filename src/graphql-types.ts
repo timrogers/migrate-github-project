@@ -126,6 +126,7 @@ export interface Project {
 export interface ProjectItem {
   content: {
     __typename: string;
+    title: string;
     number: number;
     repository: {
       nameWithOwner: string;

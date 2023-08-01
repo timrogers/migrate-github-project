@@ -119,7 +119,7 @@ interface CreatedProjectField {
   options: Array<{ id: string; name: string }>;
 }
 
-const getGlobalIdForIssueOrPullRequest = async ({
+const getIssueOrPullRequestByRepositoryAndNumber = async ({
   octokit,
   owner,
   name,
@@ -129,7 +129,7 @@ const getGlobalIdForIssueOrPullRequest = async ({
   owner: string;
   name: string;
   number: number;
-}): Promise<string | null> => {
+}): Promise<{ id: string; title: string } | null> => {
   try {
     const response = (await octokit.graphql(
       `
@@ -138,19 +138,21 @@ const getGlobalIdForIssueOrPullRequest = async ({
           issueOrPullRequest(number: $number) {
             ... on Issue {
               id
+              title
             }
 
             ... on PullRequest {
               id
+              title
             }
           }
         }
       }
     `,
       { owner, name, number },
-    )) as { repository: { issueOrPullRequest: { id: string } } };
+    )) as { repository: { issueOrPullRequest: { id: string; title: string } } };
 
-    return response.repository.issueOrPullRequest.id;
+    return response.repository.issueOrPullRequest;
   } catch (e) {
     if (
       e instanceof GraphqlResponseError &&
@@ -710,24 +712,32 @@ command
 
         const { number } = sourceProjectItem.content;
 
-        const issueOrPullRequestId = await getGlobalIdForIssueOrPullRequest({
+        const issueOrPullRequest = await getIssueOrPullRequestByRepositoryAndNumber({
           octokit,
           owner: destinationOwner,
           name: destinationName,
           number,
         });
 
-        if (!issueOrPullRequestId) {
+        if (!issueOrPullRequest) {
           logger.warn(
             `Skipping project item ${sourceProjectItem.id} because issue/pull request ${destinationNameWithOwner}#${number} does not exist`,
           );
           continue;
         }
 
+        const { id: contentId, title } = issueOrPullRequest;
+
+        if (sourceProjectItem.content.title !== title) {
+          logger.warn(
+            `The title of issue/pull request ${destinationNameWithOwner}#${number}, referenced in project item ${sourceProjectItem.id}, does not match ${sourceNameWithOwner}#${number}. You may have mapped the incorrect repository, or there may be an issue with your migration.`,
+          );
+        }
+
         const createdProjectItemId = await createProjectItem({
           octokit,
           projectId: targetProjectId,
-          contentId: issueOrPullRequestId,
+          contentId,
         });
 
         logger.info(
