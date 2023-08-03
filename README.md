@@ -42,12 +42,13 @@ Install the Node.js package from `npm` by running `npm install -g migrate-github
 
 `migrate-github-project` works in two distinct phases: export and import. The first step is to export your project and its items from your migration source.
 
+To export a project, you'll need a token with appropriate permissions. You'll need a classic token with the `read:project` and `repo` scopes, [authorized for SSO](https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-saml-single-sign-on/authorizing-a-personal-access-token-for-use-with-saml-single-sign-on) if applicable.
+
 You can export your project and its items using the `migrate-github-project export` command:
 
 ```bash
 migrate-github-project export \
-    # A GitHub access token with permissions to read the project and any relevant issues and pull requests.
-    # This can also be configured using the `GITHUB_TOKEN` environment variable.
+    # A GitHub access token with the permissions described above. This can also be configured using the `GITHUB_TOKEN` environment variable.
     --access-token GITHUB_TOKEN \
     # The organization or user who owns the project you want to export
     --project-owner monalisa \
@@ -90,12 +91,13 @@ If you don't want to map a repository - for example because it hasn't been migra
 
 You've exported your data and filled out the repository mappings template. You can now import your project into your migration target.
 
+To export a project, you'll need a token with appropriate permissions. You'll need a classic token with the `read:project` and `repo` scopes, [authorized for SSO](https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-saml-single-sign-on/authorizing-a-personal-access-token-for-use-with-saml-single-sign-on) if applicable. If you're creating an organization project, you'll also need the `read:org` scope.
+
 You can import your project using the `migrate-github-project import` command:
 
 ```bash
 migrate-github-project import \
-    # A GitHub access token with read-write Projects permissions in your destination organization
-    # This can also be configured using the `GITHUB_TOKEN` environment variable.
+    # A GitHub access token with the permissions described above. This can also be configured using the `GITHUB_TOKEN` environment variable.
     --access-token GITHUB_TOKEN \
     # The name of the organization or user that will own the newly-imported project
     --project-owner monalisa \
