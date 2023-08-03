@@ -19,6 +19,12 @@ import { getReferencedRepositories } from '../project-items.js';
 import type winston from 'winston';
 
 const command = new commander.Command();
+const { Option } = commander;
+
+enum ProjectOwnerType {
+  Organization = 'organization',
+  User = 'user',
+}
 
 interface Arguments {
   accessToken?: string;
@@ -26,6 +32,7 @@ interface Arguments {
   inputPath: string;
   repositoryMappingsPath: string;
   projectOwner: string;
+  projectOwnerType: ProjectOwnerType;
 }
 
 const readRepositoryMappings = async (
@@ -62,25 +69,63 @@ const readRepositoryMappings = async (
   });
 };
 
-const getOrganizationGlobalId = async ({
+const getOwnerGlobalId = async ({
   octokit,
-  name,
+  projectOwner,
+  projectOwnerType,
 }: {
   octokit: Octokit;
-  name: string;
+  projectOwner: string;
+  projectOwnerType: ProjectOwnerType;
+}): Promise<string> => {
+  switch (projectOwnerType) {
+    case ProjectOwnerType.Organization:
+      return await getOrganizationGlobalId({ octokit, login: projectOwner });
+    case ProjectOwnerType.User:
+      return await getUserGlobalId({ octokit, login: projectOwner });
+  }
+};
+
+const getOrganizationGlobalId = async ({
+  octokit,
+  login,
+}: {
+  octokit: Octokit;
+  login: string;
 }): Promise<string> => {
   const response = (await octokit.graphql(
     `
-    query getOrganizationGlobalId($name: String!) {
-      organization(login: $name) {
+    query getOrganizationGlobalId($login: String!) {
+      organization(login: $login) {
         id
       }
     }
   `,
-    { name },
+    { login },
   )) as { organization: { id: string } };
 
   return response.organization.id;
+};
+
+const getUserGlobalId = async ({
+  octokit,
+  login,
+}: {
+  octokit: Octokit;
+  login: string;
+}): Promise<string> => {
+  const response = (await octokit.graphql(
+    `
+    query getUserGlobalId($login: String!) {
+      user(login: $login) {
+        id
+      }
+    }
+  `,
+    { login },
+  )) as { user: { id: string } };
+
+  return response.user.id;
 };
 
 const createProject = async ({
@@ -626,7 +671,7 @@ const createProjectItem = async (opts: {
 command
   .name('import')
   .version(VERSION)
-  .description('Import an organization-owned GitHub project')
+  .description('Import a GitHub project')
   .option(
     '--access-token <access_token>',
     'The access token used to interact with the GitHub API. This can also be set using the GITHUB_TOKEN environment variable.',
@@ -647,12 +692,26 @@ command
   )
   .requiredOption(
     '--project-owner <project_owner>',
-    'The name of the organization which should own the imported project',
+    'The organization or user which should own the imported project',
+  )
+  .addOption(
+    new Option(
+      '--project-owner-type <project_owner_type>',
+      'The type of the project owner',
+    )
+      .choices(['organization', 'user'])
+      .default(ProjectOwnerType.Organization),
   )
   .action(
     actionRunner(async (opts: Arguments) => {
-      const { accessToken, baseUrl, inputPath, repositoryMappingsPath, projectOwner } =
-        opts;
+      const {
+        accessToken,
+        baseUrl,
+        inputPath,
+        repositoryMappingsPath,
+        projectOwner,
+        projectOwnerType,
+      } = opts;
 
       if (!accessToken) {
         throw new Error(
@@ -699,10 +758,11 @@ command
         );
       }
 
-      logger.info(`Looking up ID for target organization ${projectOwner}...`);
-      const ownerId = await getOrganizationGlobalId({ octokit, name: projectOwner });
+      logger.info(`Looking up ID for target ${projectOwnerType} ${projectOwner}...`);
+      const ownerId = await getOwnerGlobalId({ octokit, projectOwner, projectOwnerType });
+
       logger.info(
-        `Successfully looked up ID for organization ${projectOwner}: ${ownerId}`,
+        `Successfully looked up ID for ${projectOwnerType} ${projectOwner}: ${ownerId}`,
       );
 
       const { id: targetProjectId, url: targetProjectUrl } = await createProject({
