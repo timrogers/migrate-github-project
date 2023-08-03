@@ -10,6 +10,12 @@ import { type Project, type ProjectItem } from '../graphql-types.js';
 import { getReferencedRepositories } from '../project-items.js';
 
 const command = new commander.Command();
+const { Option } = commander;
+
+enum ProjectOwnerType {
+  Organization = 'organization',
+  User = 'user',
+}
 
 interface Arguments {
   accessToken?: string;
@@ -17,8 +23,36 @@ interface Arguments {
   projectOutputPath: string;
   repositoryMappingsOutputPath: string;
   projectOwner: string;
+  projectOwnerType: ProjectOwnerType;
   projectNumber: number;
 }
+
+const getGlobalIdForProject = async ({
+  owner,
+  ownerType,
+  number,
+  octokit,
+}: {
+  owner: string;
+  ownerType: ProjectOwnerType;
+  number: number;
+  octokit: Octokit;
+}): Promise<string> => {
+  switch (ownerType) {
+    case ProjectOwnerType.Organization:
+      return await getGlobalIdForOrganizationOwnedProject({
+        organization: owner,
+        number,
+        octokit,
+      });
+    case ProjectOwnerType.User:
+      return await getGlobalIdForUserOwnedProject({
+        user: owner,
+        number,
+        octokit,
+      });
+  }
+};
 
 const getGlobalIdForOrganizationOwnedProject = async ({
   organization,
@@ -44,6 +78,32 @@ const getGlobalIdForOrganizationOwnedProject = async ({
   )) as { organization: { projectV2: { id: string } } };
 
   return response.organization.projectV2.id;
+};
+
+const getGlobalIdForUserOwnedProject = async ({
+  user,
+  number,
+  octokit,
+}: {
+  user: string;
+  number: number;
+  octokit: Octokit;
+}): Promise<string> => {
+  const response = (await octokit.graphql(
+    `query getProjectGlobalId($user: String!, $number: Int!) {
+      user(login: $user) {
+        projectV2(number: $number) {
+          id
+        }
+      }
+    }`,
+    {
+      user,
+      number,
+    },
+  )) as { user: { projectV2: { id: string } } };
+
+  return response.user.projectV2.id;
 };
 
 const getProjectItems = async ({
@@ -286,7 +346,7 @@ const getProject = async ({
 command
   .name('export')
   .version(VERSION)
-  .description('Export an organization-owned GitHub project')
+  .description('Export a GitHub project')
   .option(
     '--access-token <access_token>',
     'The access token used to interact with the GitHub API. This can also be set using the GITHUB_TOKEN environment variable.',
@@ -309,7 +369,15 @@ command
   )
   .requiredOption(
     '--project-owner <project_owner>',
-    'The owner of the project to export. Only projects owned by organizations are supported.',
+    'The organization or user who owns the project to export',
+  )
+  .addOption(
+    new Option(
+      '--project-owner-type <project_owner_type>',
+      'The type of the owner of the project',
+    )
+      .choices(['organization', 'user'])
+      .default(ProjectOwnerType.Organization),
   )
   .requiredOption(
     '--project-number <project_number>',
@@ -324,6 +392,7 @@ command
         projectOutputPath,
         repositoryMappingsOutputPath,
         projectOwner,
+        projectOwnerType,
         projectNumber,
       } = opts;
 
@@ -354,15 +423,16 @@ command
       }, 30_000);
 
       logger.info(
-        `Looking up ID for project ${projectNumber} owned by organization ${projectOwner}...`,
+        `Looking up ID for project ${projectNumber} owned by ${projectOwnerType} ${projectOwner}...`,
       );
-      const projectId = await getGlobalIdForOrganizationOwnedProject({
-        organization: projectOwner,
+      const projectId = await getGlobalIdForProject({
+        owner: projectOwner,
+        ownerType: projectOwnerType,
         number: projectNumber,
         octokit,
       });
       logger.info(
-        `Successfully looked up ID for project ${projectNumber} owned by organization ${projectOwner}: ${projectId}`,
+        `Successfully looked up ID for project ${projectNumber} owned by ${projectOwnerType} ${projectOwner}: ${projectId}`,
       );
 
       logger.info(`Fetching project by GraphQL ID ${projectId}...`);
