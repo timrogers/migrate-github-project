@@ -1,7 +1,7 @@
 {
   "name": "migrate-github-project",
   "version": "0.0.0-development",
-  "description": "Migrate organization-owned GitHub projects (https://docs.github.com/en/issues/planning-and-tracking-with-projects) between GitHub products and organizations",
+  "description": "Migrate GitHub projects (https://docs.github.com/en/issues/planning-and-tracking-with-projects) between GitHub products and organizations",
   "homepage": "https://github.com/timrogers/formanator",
   "bin": "dist/index.js",
   "type": "module",
