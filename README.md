@@ -1,6 +1,6 @@
 # Migrate GitHub Project
 
-__⚠️ **DEPRECATED**: This project has been deprecated in favour of [`gh-migrate-project`](https://github.com/timrogers/gh-migrate-project), which distributes the same tool as a GitHub CLI extension.
+⚠️ **DEPRECATED**: This project has been deprecated in favour of [`gh-migrate-project`](https://github.com/timrogers/gh-migrate-project), which distributes the same tool as a GitHub CLI extension.
 
 Migrate [GitHub Projects](https://docs.github.com/en/issues/planning-and-tracking-with-projects) between:
 
